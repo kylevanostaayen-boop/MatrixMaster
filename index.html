@@ -109,7 +109,23 @@ function renderGame(){let el=$("board"),rows=m.length,cols=m[0].length;el.style.
 document.querySelectorAll("[data-op]").forEach(b=>b.onclick=()=>{op=b.dataset.op;hint=null;renderGame();msg("Selected "+op+" operation.")});
 ["ra","rb","factor"].forEach(id=>$(id).addEventListener("input",equationText));
 ["ra","rb"].forEach(id=>$(id).addEventListener("change",equationText));
-function apply(){if(won)return;attempts++;let a=+$("ra").value,b=+$("rb").value,k=+$("factor").value;if(op!=="scale"&&a===b){renderGame();msg("Choose two different rows.","error");return}if(op!=="swap"&&(!Number.isFinite(k)||Math.abs(k)<EPS)){renderGame();msg("Use a nonzero multiplier.","error");return}let before=clone(m),after=clone(m);if(op==="swap")[after[a],after[b]]=[after[b],after[a]];else if(op==="scale")after[a]=after[a].map(v=>z(v*k));else after[a]=after[a].map((v,c)=>z(v+(op==="subtract"?-k:k)*after[b][c]));if(same(before,after)){renderGame();msg("That move didn't change the matrix. Try another.","error");return}hist.push({m:before,moves});m=after;moves++;hint=null;renderGame();if(isRref(m))complete();else msg("Nice move! Find the next pivot or eliminate another entry.")}
+  function parseMultiplier(value) {
+  const s = String(value).trim().replace(/\s+/g, "");
+  const fraction = s.match(/^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\/([+-]?(?:\d+(?:\.\d*)?|\.\d+))$/);
+
+  if (fraction) {
+    const numerator = Number(fraction[1]);
+    const denominator = Number(fraction[2]);
+    return denominator === 0 ? NaN : numerator / denominator;
+  }
+
+  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(s)) {
+    return NaN;
+  }
+
+  return Number(s);
+}
+function apply(){if(won)return;attempts++;let a=+$("ra").value,b=+$("rb").value,k=parseMultiplier($("factor").value);if(op!=="scale"&&a===b){renderGame();msg("Choose two different rows.","error");return}if(op!=="swap"&&(!Number.isFinite(k)||Math.abs(k)<EPS)){renderGame();msg("Use a nonzero multiplier.","error");return}let before=clone(m),after=clone(m);if(op==="swap")[after[a],after[b]]=[after[b],after[a]];else if(op==="scale")after[a]=after[a].map(v=>z(v*k));else after[a]=after[a].map((v,c)=>z(v+(op==="subtract"?-k:k)*after[b][c]));if(same(before,after)){renderGame();msg("That move didn't change the matrix. Try another.","error");return}hist.push({m:before,moves});m=after;moves++;hint=null;renderGame();if(isRref(m))complete();else msg("Nice move! Find the next pivot or eliminate another entry.")}
 function complete(){won=true;clockStop();elapsed=Date.now()-start;let par=mode==="daily"?Math.max(7,m.length+2):LEVELS[idx].par,stars=moves<=par?3:moves<=par+2?2:1;$("apply").disabled=true;$("hint").disabled=true;$("next").disabled=mode==="stage"&&idx===299;$("next").textContent=mode==="daily"?"Back home":idx===299?"Adventure complete":"Next level →";if(mode==="stage"){let old=solved[idx];solved[idx]={stars:Math.max(stars,old?.stars||0),moves:old?Math.min(moves,old.moves):moves};}else{let old=dailyWins[dailyKey];dailyWins[dailyKey]={moves:old?Math.min(moves,old.moves):moves,stars}}save();renderGame();msg("Puzzle solved! "+"★".repeat(stars)+"☆".repeat(3-stars)+" · "+moves+" moves · "+attempts+" attempts · "+time(elapsed),"success")}
 function undo(){if(won||!undos||!hist.length)return;let h=hist.pop();m=clone(h.m);moves=h.moves;undos--;hint=null;renderGame();msg("Move undone. Attempts remain counted. "+undos+" undo tokens left.")}
 function restart(){if(confirm("Restart this puzzle? Timer, moves, attempts, and undo tokens will reset."))startGame(mode,idx)}
